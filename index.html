@@ -129,6 +129,15 @@ details[open] summary{margin-bottom:8px}
 .essay-steps div{border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--bg)}
 .essay-steps b{color:var(--accent);font-family:var(--display)}
 textarea{width:100%;min-height:160px;font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px}
+.jy{display:inline;border:0;background:none;padding:0;margin:0;color:var(--navy);font:inherit;font-weight:600;cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
+.jy:hover{color:var(--accent)}
+.modal-bg{position:fixed;inset:0;background:rgba(10,14,20,.5);z-index:30;display:grid;place-items:center;padding:16px}
+.modal{background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:14px;max-width:560px;width:100%;max-height:84vh;overflow:auto;padding:20px;display:grid;gap:12px;box-shadow:0 12px 40px rgba(0,0,0,.25)}
+.modal h3{font-size:1.1rem}
+.modal .lab{font-size:.8rem;font-weight:700;color:var(--muted);margin-bottom:2px}
+.jylist{display:grid;gap:6px}
+.jylist button{text-align:left;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px 12px;display:grid;gap:0}
+.jylist button:hover{border-color:var(--navy)}
 @media (prefers-reduced-motion:no-preference){.bar>i{transition:width .4s}}
 </style>
 </head>
@@ -1302,17 +1311,19 @@ function viewLearn(subj){
   app.innerHTML=`
   <div class="learn">
     <div class="units" role="list">
+      ${jyKeys(subj).length?`<button class="btn" data-jylist="${subj}" style="text-align:left">重要釋字與判決（${jyKeys(subj).length}）</button>`:""}
       ${ls.map(l=>`<button class="unit-btn" role="listitem" aria-pressed="${l.id===L.id}" data-unit="${l.id}" data-subj="${subj}">
         <span class="n">${l.id}${S.read[l.id]?` <span class="done">・已讀</span>`:""}</span><b>${l.title}</b></button>`).join("")}
     </div>
     <article class="card lesson">
       <div class="row" style="justify-content:space-between"><span class="pill red">${SUBJ[subj]}・${L.id}</span><span class="muted small">本單元例題 ${n} 題</span></div>
       <h2>${L.title}</h2>
-      <div class="plain"><b>白話說明</b><p>${L.plain}</p></div>
-      <div><h3 style="margin-bottom:8px">重點整理</h3><ol class="points">${L.points.map(p=>`<li>${p}</li>`).join("")}</ol></div>
-      <div class="box memo"><h3>記憶口訣</h3><p>${L.memo}</p></div>
-      <div class="box hz"><h3>和戶政工作的關係</h3><p>${L.hz}</p></div>
-      <div class="box trap"><h3>常見陷阱</h3><p>${L.trap}</p></div>
+      <div class="plain"><b>白話說明</b><p>${linkify(L.plain)}</p></div>
+      <div><h3 style="margin-bottom:8px">重點整理</h3><ol class="points">${L.points.map(p=>`<li>${linkify(p)}</li>`).join("")}</ol></div>
+      <div class="box memo"><h3>記憶口訣</h3><p>${linkify(L.memo)}</p></div>
+      <div class="box hz"><h3>和戶政工作的關係</h3><p>${linkify(L.hz)}</p></div>
+      <div class="box trap"><h3>常見陷阱</h3><p>${linkify(L.trap)}</p></div>
+      ${/釋字|憲判/.test(L.points.join("")+L.plain+L.hz+L.trap)?`<p class="small muted">劃虛線的釋字與判決可以點開看重點。</p>`:""}
       <div class="row">
         ${n?`<button class="btn primary" data-quiz="${L.id}">做本單元例題</button>`:`<button class="btn primary" data-pastsubj="${subj}">做${SUBJ[subj]}歷屆試題</button>`}${subj==="chinese"?`<a class="btn" href="#essay" style="text-decoration:none">練習歷屆作文</a>`:""}
         <button class="btn" data-mark="${L.id}">${S.read[L.id]?"標記為未讀":"標記為已讀"}</button>
@@ -1405,7 +1416,7 @@ function viewQuiz(){
       let cls="opt"; if(p!==null){ if(isRight(k)) cls+=" right"; else if(k===p) cls+=" wrong"; }
       return `<button class="${cls}" data-opt="${k}" ${p!==null?"disabled":""}><span class="k">(${"ABCD"[k]})</span><span>${q.past?esc(t):t}</span></button>`;}).join("")}
     </div>
-    ${p!==null?`<div class="expl"><b style="color:${isRight(p)?"var(--ok)":"var(--bad)"}">${isRight(p)?"答對了":"答錯了，正解是 ("+"ABCD"[q.a]+")"}</b><p style="white-space:pre-line">${q.past?esc(q.e):q.e}</p><span class="law">${q.past?"出處：":"依據："}${esc(q.l)}</span></div>
+    ${p!==null?`<div class="expl"><b style="color:${isRight(p)?"var(--ok)":"var(--bad)"}">${isRight(p)?"答對了":"答錯了，正解是 ("+"ABCD"[q.a]+")"}</b><p style="white-space:pre-line">${linkify(q.past?esc(q.e):q.e)}</p><span class="law">${q.past?"出處：":"依據："}${esc(q.l)}</span></div>
     <div class="row"><button class="btn primary" id="next">${quiz.i+1<quiz.list.length?"下一題":"看結果"}</button>${L?`<button class="btn" data-go="${L.subj}" data-unit="${L.id}">回看 ${L.id} 講義</button>`:""}<button class="btn" id="quit">結束練習</button></div>`:
     `<div class="row"><button class="btn" id="quit">結束練習</button></div>`}
   </section>`;
@@ -1600,7 +1611,7 @@ function viewPastEssays(){
       <p style="white-space:pre-line;max-width:68ch">${esc(e.q)}</p>
       <div class="row"><button class="btn" data-grade="${PE.indexOf(e)}">複製題目請 Claude 批改</button><span class="small muted">建議時間：${e.s==="chinese"&&e.p>=60?"90 分鐘":"每 25 分約 25 分鐘"}</span></div>
       ${e.note?`<div class="box trap"><p class="small">${esc(e.note)}</p></div>`:""}
-      <div class="stack" style="margin-top:8px">${e.a.map(s=>`<div class="box"><h3>${esc(s[0])}</h3><p style="white-space:pre-line">${esc(s[1])}</p></div>`).join("")}</div>
+      <div class="stack" style="margin-top:8px">${e.a.map(s=>`<div class="box"><h3>${esc(s[0])}</h3><p style="white-space:pre-line">${linkify(esc(s[1]))}</p></div>`).join("")}</div>
     </details>`).join("")||`<p class="muted">這個組合沒有申論題。四等的行政法是全選擇題，請改選三等考試。</p>`}</div>
   </section>`;
 }
@@ -1653,8 +1664,8 @@ function viewExam(){
       const L=lessonById(n.u);
       return `<div class="box" style="border-color:var(--${cls==="ok"?"ok":cls==="red"?"accent":"navy"})">
         <div class="row" style="justify-content:space-between"><h3 style="font-size:1rem">${n.t}</h3><span class="row" style="gap:6px"><span class="pill">${n.s}</span><span class="pill ${cls}">${n.st}</span></span></div>
-        <p class="small">${n.d}</p>
-        <p class="small"><b>可能怎麼考：</b>${n.h}</p>
+        <p class="small">${linkify(n.d)}</p>
+        <p class="small"><b>可能怎麼考：</b>${linkify(n.h)}</p>
         <div><button class="btn" data-go="${L.subj}" data-unit="${L.id}">回看 ${L.id} ${L.title}</button></div>
       </div>`;}).join("")}</div>
   </section>
@@ -1836,7 +1847,7 @@ function viewMockResult(){const M=MOCK;const wrong=M.res.filter(r=>!r.ok);
     ${wrong.map(r=>`<details><summary>${esc(r.it.l)}　<span class="small muted">你選 ${r.a===undefined?"未作答":"("+"ABCD"[r.a]+")"}，正解 (${"ABCD"[r.it.a]})</span></summary>
       ${r.it.pass?`<p class="small muted">（本題附文章，請到歷屆試題頁查看全文）</p>`:""}
       <p style="white-space:pre-line">${esc(r.it.q)}</p><ol type="A" class="small">${r.it.o.map(o=>`<li>${esc(o)}</li>`).join("")}</ol>
-      <div class="expl"><p style="white-space:pre-line">${esc(r.it.e)}</p></div></details>`).join("")||`<p>全部答對！</p>`}
+      <div class="expl"><p style="white-space:pre-line">${linkify(esc(r.it.e))}</p></div></details>`).join("")||`<p>全部答對！</p>`}
   </section>`;
   document.getElementById("mback").onclick=()=>{MOCK=null;viewMock();};
 }
@@ -1848,6 +1859,100 @@ function gradePrompt(e){const isK=e.s==="chinese";const isGW=isK&&(e.t||[]).incl
 function copyText(t,btn){const done=()=>{const o=btn.textContent;btn.textContent="已複製，貼到 Claude 對話中";setTimeout(()=>btn.textContent=o,2500);};
   try{navigator.clipboard.writeText(t).then(done,()=>showCopy(t));}catch(e){showCopy(t);}}
 function showCopy(t){const d=document.createElement("div");d.className="card stack";d.style.cssText="position:fixed;left:16px;right:16px;bottom:16px;z-index:9;max-width:720px;margin:0 auto";d.innerHTML=`<b>無法自動複製，請手動全選複製：</b><textarea style="min-height:180px">${esc(t)}</textarea><button class="btn">關閉</button>`;document.body.appendChild(d);d.querySelector("button").onclick=()=>d.remove();d.querySelector("textarea").select();}
+
+const JY={
+"287":{s:["intro","admin"],t:"行政函釋的效力時點",q:"主管機關對法規所為的釋示（函釋），從什麼時候開始適用？",a:"函釋是闡明法規原意，應自法規生效之日起有其適用。但後來的函釋對人民較不利時，已確定的案件不受影響。",k:"法學緒論「法的適用」：函釋原則上隨法規生效日適用。"},
+"308":{s:["admin"],t:"公立學校教師不適用公務員服務法",q:"未兼行政職務的公立學校教師，是不是公務員服務法所稱的公務員？",a:"公立學校教師支領的是「薪給」而非「俸給」，未兼任行政職務者，不屬公務員服務法的公務員；兼任行政職務時，就兼任部分才適用。",k:"公務員法：各法的「公務員」範圍不同。"},
+"313":{s:["admin"],t:"處罰的授權明確性",q:"以命令規定行政罰的構成要件，要符合什麼條件？",a:"對違反行政法上義務的行為科處罰鍰，涉及人民權利的限制，構成要件與數額應由法律定之；若法律授權以命令補充，授權的內容、目的與範圍應具體明確。",k:"法律保留與授權明確性原則，行政罰法第4條的憲法基礎。"},
+"364":{s:["constitution"],t:"接近使用傳播媒體",q:"人民可以直接要求媒體提供版面或時段嗎？",a:"以廣播電視表達意見屬言論自由保障範圍；人民接近使用媒體，應在兼顧媒體編輯自由下，由立法者以法律規定其要件。",k:"沒有法律依據時，人民不能直接向媒體主張。"},
+"365":{s:["civil","constitution"],t:"父權優先條款違憲",q:"民法規定父母對子女行使親權意思不一致時「由父行使」，是否合憲？",a:"違反男女平等原則，違憲。現行民法第1089條改為由父母共同行使，意思不一致時得請求法院依子女最佳利益酌定。",k:"性別平等、子女最佳利益。"},
+"384":{s:["constitution"],t:"實質正當法律程序",q:"檢肅流氓條例的強制到案、秘密證人等規定是否合憲？",a:"憲法第8條的「法定程序」不只要有法律依據，程序內容也須實質正當；條例中強制到案、剝奪對質詰問等規定違憲。",k:"人身自由的正當法律程序，第8條必考。"},
+"392":{s:["constitution"],t:"檢察官沒有羈押權",q:"憲法第8條所稱的「法院」，是否包括檢察官？",a:"第8條第2項所稱「法院」，指有審判權的法官所構成的獨任或合議法院，不包括檢察官；由檢察官決定羈押違憲。",k:"人身自由：羈押由法院決定，24 小時內移送法院。"},
+"399":{s:["constitution","civil","huzheng"],t:"姓名權",q:"主管機關可以因名字「不雅」以外的理由，拒絕人民改名嗎？",a:"姓名權為人格權的一種，人之姓名為其人格之表現，如何命名為人民的自由，受憲法第22條保障。主管機關以「名字並非不雅」為由拒絕改名，違憲。",k:"戶政必考：姓名權屬第22條概括基本權，影響姓名條例改名規定。"},
+"407":{s:["constitution"],t:"猥褻出版品",q:"猥褻出版品受不受言論自由保障？",a:"猥褻出版品仍屬出版自由的保障範圍，但為維護社會風化可依法限制；主管機關對猥褻的解釋性規定應隨社會觀念變遷檢討。",k:"猥褻資訊仍屬言論，與釋字第617號合看。"},
+"423":{s:["admin"],t:"行政處分不看形式",q:"機關的行為叫什麼名稱、有沒有寫「不得聲明不服」，會影響是否為行政處分嗎？",a:"行政機關就特定具體公法事件所為對外發生法律效果的單方行為，都是行政處分，不因用語、形式、是否有後續行為，或記載不得聲明不服而有不同。",k:"行政處分的判斷：看實質效果，不看名稱。"},
+"443":{s:["admin","constitution"],t:"層級化法律保留（役男出境限制）",q:"以施行法授權的命令限制役男出境，是否合憲？",a:"出入國境屬憲法第10條居住遷徙自由。限制役男出境須有法律或法律具體明確授權，原規定違憲。本號解釋並建立層級化法律保留：憲法保留、絕對法律保留、相對法律保留、細節性技術性事項可用行政規則。",k:"行政法最重要的釋字之一，法律保留的四個層級要背。"},
+"445":{s:["constitution"],t:"集會遊行法（言論內容審查）",q:"集遊法以「主張共產主義或分裂國土」為不予許可的理由，是否合憲？",a:"室外集會原則採許可制合憲；但以主張共產主義或分裂國土為不予許可理由，等於事前審查言論內容，違憲。",k:"集會自由；許可制本身不違憲，審查言論內容才違憲。"},
+"452":{s:["civil","constitution"],t:"妻以夫之住所為住所違憲",q:"舊民法規定妻以夫的住所為住所，是否合憲？",a:"違反男女平等原則及婚姻自由，違憲。現行民法第1002條規定夫妻住所由雙方共同協議。",k:"夫妻住所協議；男女平等。"},
+"468":{s:["constitution"],t:"連署參選總統須繳保證金",q:"以連署方式參選總統須繳保證金，是否違反平等選舉？",a:"保證金是為防止人民任意參與候選、耗費社會資源，金額未過高，不違反平等原則。",k:"參政權與選舉的合理限制。"},
+"469":{s:["admin"],t:"公務員怠於執行職務的國家賠償",q:"公務員怠於執行職務，人民什麼時候可以請求國家賠償？",a:"法律規範的保障目的及於特定人民，且公務員對作為義務已無不作為的裁量空間，而因故意或過失怠於執行職務，致特定人民權利受損時，人民得請求國賠。",k:"國賠法第2條第2項後段；保護規範理論與裁量收縮至零。"},
+"479":{s:["constitution"],t:"團體命名自由",q:"主管機關可以強制人民團體使用特定名稱（例如加上「中華民國」）嗎？",a:"人民團體的命名屬結社自由的保障範圍，以行政規則強制更名，違反法律保留與結社自由。",k:"結社自由包含團體名稱的自主決定。"},
+"485":{s:["constitution"],t:"實質平等與社會給付",q:"國軍老舊眷村改建條例給予原眷戶優惠，是否違反平等原則？",a:"平等原則保障實質平等，立法者可以斟酌事物差異作合理區別。給予社會給付時，應考量受益人的實際需要與國家財力，避免過度優惠。",k:"實質平等；基本國策可作為審查依據。"},
+"490":{s:["constitution"],t:"宗教自由與兵役",q:"男子以宗教理由拒服兵役，國家可以處罰嗎？",a:"宗教信仰的內在自由受絕對保障；宗教行為與宗教結社自由則受相對保障，可依法律在必要範圍內限制。服兵役義務的規定不違反宗教自由。國家對宗教應保持中立。",k:"宗教自由三層次：內在信仰絕對保障，其餘相對保障。"},
+"491":{s:["admin"],t:"一次記二大過免職",q:"考績法的專案考績一次記二大過免職，性質為何、要符合什麼程序？",a:"屬實質上的懲戒處分。構成要件應由法律定之，應給予陳述申辯機會、說明理由、告知救濟途徑，免職處分應於確定後方得執行。",k:"公務員法：懲處與懲戒的界線、正當程序。"},
+"499":{s:["constitution"],t:"第五次修憲無效（國代延任）",q:"國民大會以無記名投票通過延長自身任期的修憲條文，是否有效？",a:"修憲程序有明顯重大瑕疵，延任違反國民主權與自由民主憲政秩序，修憲條文失其效力。審查修憲的標準是自由民主憲政秩序等憲法本質重要原則。",k:"修憲有界限；不以基本國策作為審查修憲條文的標準。"},
+"509":{s:["constitution","intro"],t:"誹謗罪與言論自由",q:"刑法誹謗罪是否違憲？無法證明言論真實就一定有罪嗎？",a:"誹謗罪合憲。但行為人雖不能證明言論為真實，若依其所提證據資料，有相當理由確信其為真實，就不能以誹謗罪相繩。",k:"「相當理由確信真實」；言論自由包括事實陳述。"},
+"524":{s:["admin"],t:"禁止再授權（全民健保）",q:"法律授權主管機關訂定命令，主管機關可以改用行政規則或再交給下級機關訂定嗎？",a:"法律授權訂定法規命令補充者，主管機關應以法規命令為之，不得以行政規則替代；法律沒有轉委任的授權時，不得再委由所屬機關發布規章。",k:"授權明確性與再授權禁止。"},
+"525":{s:["admin"],t:"法規變動與信賴保護",q:"法規廢止或修改時，人民什麼時候可以主張信賴保護？",a:"法規廢止或變更時，對人民值得保護的信賴利益應採取合理補救措施或過渡條款。但法規重大明顯違反上位規範、因當事人以不正當方法或不正確資料而發布，或僅為願望期待而未有信賴表現者，不值得保護。",k:"信賴保護的三要件：信賴基礎、信賴表現、值得保護。"},
+"535":{s:["admin","constitution"],t:"警察臨檢",q:"警察可以隨意對人民或場所實施臨檢嗎？",a:"臨檢影響人民行動自由、財產權與隱私權，應有法律明確規範；對場所的臨檢須限於已發生危害或依客觀合理判斷易生危害的處所，對人的臨檢須有相當理由足認其行為已構成或即將發生危害，並應遵守比例原則。",k:"比例原則、法律明確性；後來制定警察職權行使法。"},
+"553":{s:["admin"],t:"臺北市里長延選案",q:"中央撤銷地方政府延期辦理里長選舉的決定，地方可以救濟嗎？",a:"「特殊事故」屬不確定法律概念，地方有判斷餘地，上級監督應尊重；地方自治團體對上級的違法監督處分，得依訴願法、行政訴訟法提起救濟。",k:"自治事項的適法性監督；地方自治團體的訴訟權。"},
+"567":{s:["constitution"],t:"思想自由",q:"國家可以因為人民的思想而加以處罰嗎？",a:"思想自由保障人民內在精神活動，是言論自由的基礎，屬最基本的人性尊嚴，即使在非常時期也不得以緊急命令或其他手段限制。",k:"思想自由絕對保障。"},
+"573":{s:["constitution"],t:"宗教結社自主",q:"國家可以規定宗教團體處分財產須經特定程序或限制其組織人事嗎？",a:"宗教團體的內部組織、人事與財產處分屬宗教結社自由，國家只對特定宗教設限，違反宗教中立與平等，違憲。",k:"宗教中立原則；宗教結社自主。"},
+"575":{s:["constitution","admin","huzheng"],t:"戶警分立案（服公職權）",q:"戶政機關由警察系統改為一般行政系統，原由警察人員擔任的戶政人員須調整職務，是否侵害服公職權？",a:"憲法第18條服公職權保障人民依法擔任公職，並享有身分保障、俸給、退休金等權利。戶警分立的改制屬機關組織調整，並有過渡措施保障原有人員，未逾越必要程度，合憲。",k:"戶政相關：戶政事務所改隸一般行政系統的歷史；服公職權的保障內容。"},
+"577":{s:["constitution"],t:"菸品標示警語（不表意自由）",q:"強制菸商在包裝上標示尼古丁含量，是否侵害言論自由？",a:"言論自由包括消極的不表意自由；強制標示警語雖限制不表意自由，但為維護國民健康，手段合理，合憲。",k:"不表意自由的首次確認。"},
+"584":{s:["constitution"],t:"計程車駕駛的職業限制",q:"曾犯特定重罪者終身不得申請計程車駕照，是否違憲？",a:"屬對職業選擇自由的主觀條件限制，為保障乘客安全的重大公益，手段尚屬必要，合憲。",k:"工作權的三階層審查（職業執行、主觀條件、客觀條件）。"},
+"587":{s:["civil"],t:"子女提起否認之訴的權利",q:"舊民法只讓夫妻提起婚生否認之訴，子女不能提起，是否合憲？",a:"子女獲知自身血統來源屬人格權的一部分，不許子女提起否認之訴違憲。現行民法第1063條已讓子女也能提起。",k:"民法 M5：否認之訴的提起人包括子女。"},
+"603":{s:["constitution","huzheng"],t:"換發身分證強制按捺指紋",q:"戶籍法規定請領身分證須按捺指紋，否則不予發給，是否合憲？",a:"隱私權受憲法第22條保障，包含個人自主控制其資料的資訊隱私權。強制按捺指紋並錄存，目的與手段均不符比例原則，違憲。",k:"戶政必考：資訊隱私權、比例原則。"},
+"605":{s:["constitution","admin"],t:"公務人員俸給與信賴保護",q:"改變公務人員曾任年資提敘的規定，是否違反信賴保護？",a:"服公職權包括俸給權益；法規修正已設過渡條款，對既有權益合理保障，合憲。",k:"服公職權、信賴保護。"},
+"611":{s:["constitution","admin"],t:"服公職權的保障範圍",q:"服公職權保障哪些內容？",a:"包括公平參與競試、身分保障、俸給、退休，以及依法令晉敘陞遷。陞遷相關事項的規範須有法律依據或授權。",k:"服公職權範圍。"},
+"613":{s:["admin","constitution"],t:"獨立機關（國家通訊傳播委員會）",q:"由政黨比例推薦 NCC 委員，是否合憲？",a:"獨立機關仍隸屬行政院，行政院對其人事應有決定權；依政黨比例推薦委員違反權力分立與責任政治，違憲。有法定任期的委員，不得隨時命其去職。",k:"獨立機關的設置界限。"},
+"617":{s:["constitution","intro"],t:"散布猥褻物品罪",q:"刑法散布猥褻物品罪是否違憲？",a:"猥褻言論仍受言論自由保障，但刑法第235條限於含有暴力、性虐待、人獸交等，或未採取適當安全隔絕措施而傳布者，在此範圍內合憲。",k:"與釋字第407號合看。"},
+"627":{s:["constitution"],t:"總統刑事豁免權",q:"總統的刑事豁免權範圍為何？",a:"總統刑事豁免是暫時性的程序障礙，不及於共同正犯等他人；總統仍有作證義務，只是得就國家機密事項拒絕證言。",k:"憲法第52條的界限。"},
+"631":{s:["constitution"],t:"通訊監察須法官核發",q:"由檢察官核發通訊監察書，是否合憲？",a:"秘密通訊自由受憲法第12條保障；通訊監察書應由客觀、獨立行使職權的法官核發，原規定由檢察官核發違憲。",k:"秘密通訊自由；法官保留。"},
+"644":{s:["constitution"],t:"政黨的特別保障",q:"人民團體法以主張共產主義或分裂國土為不許可設立的理由，是否合憲？",a:"屬事前審查言論內容，違憲。政黨受較高保障，違憲解散須由憲法法庭審理。",k:"結社自由、政黨違憲解散。"},
+"649":{s:["constitution"],t:"按摩業保留給視障者",q:"非視障者不得從事按摩業，是否違憲？",a:"屬對職業選擇自由的客觀條件限制，雖為保障視障者工作權，但手段與目的間欠缺實質關聯，違憲。",k:"工作權客觀限制的審查最嚴格。"},
+"656":{s:["constitution"],t:"判命公開道歉（已變更）",q:"法院判命加害人公開道歉，是否違憲？",a:"本號原認為未涉自我羞辱等損及人性尊嚴者合憲；但已被 111 年憲判字第2號變更，現在認為違憲。",k:"注意已被變更，考題常問最新見解。"},
+"666":{s:["constitution","intro"],t:"性交易只罰娼不罰嫖",q:"社會秩序維護法只處罰性交易的提供者，是否違憲？",a:"同屬性交易的雙方卻只罰一方，違反平等原則，違憲。",k:"平等原則。"},
+"709":{s:["admin"],t:"都市更新的正當行政程序",q:"都市更新條例的核定程序是否合憲？",a:"未設適當組織審議、未確保利害關係人知悉相關資訊並適時陳述意見，也未以公開方式舉辦聽證，不符憲法要求的正當行政程序，違憲。",k:"正當行政程序：資訊公開、陳述意見、聽證。"},
+"712":{s:["civil"],t:"收養大陸地區人民的限制",q:"臺灣地區人民已有子女者，一律不得收養大陸地區人民，是否合憲？",a:"一律禁止收養配偶的大陸地區子女，對家庭生活與人格發展自由的限制過度，違憲。",k:"收養與家庭權；民法 M5 收養。"},
+"718":{s:["constitution"],t:"緊急性、偶發性集會",q:"緊急性集會也必須事先申請許可嗎？",a:"偶發性集會無從事先申請，緊急性集會無法依一般期限申請；集遊法未排除這兩種情形，違憲。",k:"與釋字第445號一起考。"},
+"738":{s:["admin","constitution"],t:"地方自治條例的距離限制",q:"地方自治條例訂定比中央法律更嚴格的電子遊戲場距離限制，是否有效？",a:"中央法律的距離規定是最低標準，地方基於因地制宜，以自治條例訂定更嚴格限制屬自治權限，只要不違反比例原則即有效。",k:"中央與地方權限；地方制度法。"},
+"744":{s:["constitution"],t:"化粧品廣告事前審查",q:"化粧品廣告須事先經主管機關審查，是否違憲？",a:"商業言論亦受言論自由保障；事前審查是對言論的最嚴重限制，化粧品廣告的事前審查違憲。",k:"商業言論與事前審查。"},
+"748":{s:["civil","constitution","huzheng"],t:"同性婚姻",q:"民法未使相同性別二人得成立永久結合關係，是否違憲？",a:"違反憲法第22條婚姻自由及第7條平等權。之後制定「司法院釋字第748號解釋施行法」，同性二人得向戶政機關辦理結婚登記。",k:"戶政實務：同性結婚登記的法源。"},
+"769":{s:["constitution"],t:"議長選舉記名投票",q:"地方議會正副議長選舉採記名投票，是否違反秘密選舉？",a:"憲法第129條秘密選舉針對人民行使選舉權；議長由議員選出，採記名投票使選民能監督議員，不違憲。",k:"參政權與選舉原則。"},
+"775":{s:["intro"],t:"累犯一律加重",q:"刑法累犯一律加重最低本刑，是否違憲？",a:"不分情節一律加重最低本刑，可能使人受過苛的處罰，於此範圍內違反罪刑相當及比例原則；法院應依個案裁量是否加重。",k:"法學緒論刑法：罪刑相當原則。"},
+"784":{s:["constitution","admin"],t:"學生的行政爭訟權",q:"學生只有在被退學時才能提起行政爭訟嗎？",a:"各級學校學生認其權利因學校的公權力措施受侵害，即使不是退學或類似處分，也可以依措施性質提起行政爭訟，不因學生身分而受限。",k:"有權利即有救濟；特別權力關係的突破。"},
+"785":{s:["admin"],t:"公務人員的救濟途徑",q:"公務人員對服務機關的措施不服，只能走申訴、再申訴嗎？",a:"公務人員權利遭受違法侵害，得按措施與爭議的性質提起相應的行政訴訟，不因公務人員身分而有不同。",k:"公務員法：復審與申訴的分流、得提行政訴訟。"},
+"791":{s:["intro","civil","constitution"],t:"通姦罪違憲",q:"刑法通姦罪與相姦罪是否合憲？",a:"以刑罰處罰通姦，對性自主權的限制與所欲保護的公益顯失均衡，違憲；釋字第554號不再援用。刑事訴訟法撤回告訴的區別規定亦違憲。",k:"法學緒論：刑法除罪化；婚姻忠誠改以民事處理。"},
+"794":{s:["constitution"],t:"菸品廣告限制",q:"禁止以體育或公益活動宣傳菸品，是否違憲？",a:"為維護國民健康，限制菸品廣告與促銷合憲。",k:"商業言論的限制，與釋字第744號比較。"},
+"803":{s:["constitution"],t:"原住民狩獵",q:"原住民狩獵的事前申請核准制是否合憲？",a:"事前申請核准制本身合憲，定期性祭儀於 20 日前申請也合憲；但非定期性狩獵要求 5 日前申請、事先載明獵捕動物的種類數量，違反比例原則。",k:"原住民族文化權、基本國策增修條文第10條。"},
+"812":{s:["intro"],t:"強制工作違憲",q:"刑後強制工作的保安處分是否合憲？",a:"強制工作在執行上與刑罰無明顯區隔，對人身自由的限制違反憲法明顯區隔原則與比例原則，相關規定失效。",k:"法學緒論刑法：保安處分；與姓名條例「受強制工作裁判不得改名」相關。"},
+"111憲判2":{s:["constitution","civil"],t:"判命公開道歉違憲",q:"法院以判決命加害人公開道歉，是否合憲？",a:"侵害憲法第11條保障的不表意自由，違憲。變更釋字第656號的見解。名譽受損可改用其他方式回復，例如刊登判決。",k:"近年必考：不表意自由、見解變更。"},
+"111憲判13":{s:["constitution","admin"],t:"健保資料庫案（資訊隱私）",q:"健保資料提供學術研究等外部使用，是否違憲？",a:"欠缺個人資料保護的獨立監督機制，以及當事人請求停止利用的權利，於此範圍內侵害資訊隱私權，違憲。",k:"資訊隱私權、個資法；與釋字第603號一起考。"},
+"112憲判4":{s:["civil","constitution"],t:"有責配偶請求離婚",q:"民法第1052條第2項但書規定，唯一有責的配偶不得請求離婚，是否合憲？",a:"一律不許唯一有責配偶請求裁判離婚，完全剝奪其離婚機會，可能過苛，於此範圍內違反憲法第22條保障婚姻自由的意旨。應於 2 年內修法，逾期未修法者由法院依判決意旨個案審酌。",k:"民法 M4 離婚；修法草案審議中。"},
+"113憲判8":{s:["constitution","intro"],t:"死刑案",q:"刑法死刑規定是否違憲？",a:"死刑未全面違憲，但只能適用於情節最嚴重的故意殺人罪等犯行，並須最嚴密的正當程序（例如判決須法官一致決、精神障礙者不得執行）。",k:"生命權、正當法律程序。"},
+"113憲判9":{s:["constitution"],t:"立法院職權行使法案",q:"立法院職權行使法與刑法修正（國會改革）是否合憲？",a:"多數爭議規定被宣告違憲或限縮解釋，例如總統國情報告即問即答、藐視國會罪等；調查權須符合權力分立與正當程序。",k:"權力分立、立法院調查權的界限。"},
+"114憲判1":{s:["constitution"],t:"憲法訴訟法修正案",q:"2024 年底修正的憲法訴訟法（提高評議人數與違憲門檻）是否合憲？",a:"5 名大法官作成判決，認為修正規定使憲法法庭在大法官人數不足時無法運作，違憲；另有 3 名大法官認為評議組成不合法而未參與。這項判決本身的效力仍有政治爭議。",k:"屬時事題，學習時以判決內容與條文為準，不涉立場。"}
+};
+
+function jyLabel(k){const m=k.match(/^(\d{3})憲判(\d+)$/);return m?`${m[1]} 年憲判字第 ${m[2]} 號`:`釋字第 ${k} 號`;}
+function jyOrder(a,b){const A=/憲判/.test(a),B=/憲判/.test(b);if(A!==B)return A?1:-1;return parseInt(a)-parseInt(b)||a.localeCompare(b);}
+function linkify(s){return String(s)
+  .replace(/釋字第\s*(\d+)\s*號/g,(m,n)=>JY[n]?`<button class="jy" data-jy="${n}">${m}</button>`:m)
+  .replace(/(\d{3})\s*年憲判字第\s*(\d+)\s*號/g,(m,y,n)=>{const k=y+"憲判"+n;return JY[k]?`<button class="jy" data-jy="${k}">${m}</button>`:m;});}
+let JYBACK=null;
+function closeModal(){const m=document.getElementById("jymodal");if(m)m.remove();JYBACK=null;}
+function showModal(html){closeModal();const bg=document.createElement("div");bg.className="modal-bg";bg.id="jymodal";bg.innerHTML=`<div class="modal" role="dialog" aria-modal="true">${html}</div>`;document.body.appendChild(bg);
+  bg.addEventListener("click",e=>{if(e.target===bg){closeModal();return;}const b=e.target.closest("button");if(!b)return;
+    if(b.dataset.close!==undefined){closeModal();return;}
+    if(b.dataset.back!==undefined){const s=b.dataset.back;closeModal();openJYList(s);return;}
+    if(b.dataset.jy){const back=JYBACK;openJY(b.dataset.jy,back);}});
+  const f=bg.querySelector("button");if(f)f.focus();}
+function openJY(k,back){const j=JY[k];if(!j)return;
+  showModal(`<div class="row" style="justify-content:space-between;align-items:flex-start"><div><span class="pill red">${jyLabel(k)}</span><h3 style="margin-top:6px">${j.t}</h3></div><button class="btn" data-close aria-label="關閉">關閉</button></div>
+   <div><div class="lab">爭點</div><p>${j.q}</p></div>
+   <div><div class="lab">結論</div><p>${linkify(j.a)}</p></div>
+   <div class="box memo"><h3>考點</h3><p>${j.k}</p></div>
+   <p class="small muted">相關科目：${j.s.map(x=>SUBJ[x]).join("、")}。摘要為考試用的重點整理，完整內容以司法院公布的解釋文、判決為準。</p>
+   ${back?`<div><button class="btn" data-back="${back}">回到${SUBJ[back]}的釋字清單</button></div>`:""}`);
+  JYBACK=back||null;}
+function jyKeys(subj){return Object.keys(JY).filter(k=>JY[k].s.includes(subj)).sort(jyOrder);}
+function openJYList(subj){const ks=jyKeys(subj);
+  showModal(`<div class="row" style="justify-content:space-between"><h3>${SUBJ[subj]}的重要釋字與判決（${ks.length}）</h3><button class="btn" data-close>關閉</button></div>
+   <p class="small muted">點任一則可看爭點、結論與考點。</p>
+   <div class="jylist">${ks.map(k=>`<button data-jy="${k}"><span class="small muted">${jyLabel(k)}</span><b>${JY[k].t}</b></button>`).join("")}</div>`);
+  JYBACK=subj;}
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal();});
 
 /* ========== 路由 ========== */
 const VIEWS=["home","intro","admin","constitution","civil","huzheng","chinese","english","quiz","past","mock","cards","essay","exam-guide","plan"];
@@ -1867,6 +1972,8 @@ function render(){
 }
 app.addEventListener("click",e=>{
   const t=e.target.closest("button"); if(!t) return;
+  if(t.dataset.jy){openJY(t.dataset.jy);return;}
+  if(t.dataset.jylist){openJYList(t.dataset.jylist);return;}
   if(t.dataset.grade!==undefined){copyText(gradePrompt(PE[+t.dataset.grade]),t);return;}
   if(t.dataset.pastsubj){PAST.s=t.dataset.pastsubj;PAST.t="all";PAST.y="all";PAST.x="地特四等";PAST.wrong=false;savePast();location.hash="past";return;}
   if(t.dataset.review){startReview();return;}
