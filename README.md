@@ -2,7 +2,7 @@
 
 地特四等、普考戶政類科的自學 App：講義、例題、歷屆試題、整卷模擬考、間隔複習與一年讀書計畫。
 
-開啟網址：https://sheng007g.github.io/huzheng-exam/
+開啟網址：https://sheng007g.github.io/Huzheng-exam/
 
 ## 加到 iPhone 主畫面
 用 Safari 開啟上面的網址 → 點下方「分享」按鈕 → 選「加入主畫面」。
