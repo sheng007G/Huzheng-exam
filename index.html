@@ -135,6 +135,14 @@ textarea{width:100%;min-height:160px;font:inherit;color:var(--ink);background:va
 .modal h3{font-size:1.1rem}
 .modal .lab{font-size:.8rem;font-weight:700;color:var(--muted);margin-bottom:2px}
 .jylist{display:grid;gap:6px}
+#app:has(.backfab){padding-bottom:84px}
+.backfab{position:fixed;left:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:60;background:var(--navy);color:#fff;border-color:var(--navy);box-shadow:0 6px 18px rgba(0,0,0,.25);font-weight:700}
+.jycard{display:grid;gap:2px}
+.jyrow{display:grid;grid-template-columns:3.2em 1fr;gap:10px;align-items:baseline;padding:6px 0;border-top:1px solid var(--line)}
+.jyrow p{margin:0}
+.jyrow .lab{font-size:.85rem;font-weight:700;color:var(--muted)}
+.jyrow.memo .lab{color:var(--red,#b3261e)}
+@media (max-width:560px){.jyrow{grid-template-columns:1fr;gap:2px}}
 .jylist button{text-align:left;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px 12px;display:grid;gap:0}
 .jylist button:hover{border-color:var(--navy)}
 .lawbtn{display:inline;border:0;background:none;padding:0;margin:0;color:var(--ok);font:inherit;cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
@@ -174,6 +182,7 @@ mark{background:var(--warn-soft);color:inherit;padding:0 2px;border-radius:3px}
       <a href="#mock">模擬考</a>
       <a href="#essay">申論與作文</a>
       <a href="#laws">法條</a>
+      <a href="#jy">釋字</a>
       <a href="#cards">數字速記</a>
       <a href="#exam-guide">考情分析</a>
     </nav>
@@ -1996,7 +2005,8 @@ function showModal(html){closeModal();const bg=document.createElement("div");bg.
     if(b.dataset.close!==undefined){closeModal();return;}
     if(b.dataset.back!==undefined){const s=b.dataset.back;closeModal();openJYList(s);return;}
     if(b.dataset.law){const [n,no]=b.dataset.law.split("|");openLaw(n,no);return;}
-    if(b.dataset.lawopen){const [i,no]=b.dataset.lawopen.split("|");closeModal();LAWSEL={i:+i,q:"",jump:no};if(location.hash==="#laws")viewLaws();else location.hash="laws";return;}
+    if(b.dataset.lawopen){const [i,no]=b.dataset.lawopen.split("|");closeModal();goView("laws",()=>{LAWSEL={i:+i,q:"",jump:no};});return;}
+    if(b.dataset.jypage){const sj=b.dataset.jypage;closeModal();goView("jy",()=>{JYSEL={s:sj,q:""};});return;}
     if(b.dataset.jy){const back=JYBACK;openJY(b.dataset.jy,back);}});
   const f=bg.querySelector("button");if(f)f.focus();}
 function openJY(k,back){const j=JY[k];if(!j)return;
@@ -2010,7 +2020,7 @@ function openJY(k,back){const j=JY[k];if(!j)return;
 function jyKeys(subj){return Object.keys(JY).filter(k=>JY[k].s.includes(subj)).sort(jyOrder);}
 function openJYList(subj){const ks=jyKeys(subj);
   showModal(`<div class="row" style="justify-content:space-between"><h3>${SUBJ[subj]}的重要釋字與判決（${ks.length}）</h3><button class="btn" data-close>關閉</button></div>
-   <p class="small muted">點任一則可看爭點、結論與考點。</p>
+   <p class="small muted">點任一則可看爭點、結論與考點。也可以<button class="lawbtn" data-jypage="${subj}">打開「釋字」頁一次看完全部摘要</button>。</p>
    <div class="jylist">${ks.map(k=>`<button data-jy="${k}"><span class="small muted">${jyLabel(k)}</span><b>${JY[k].t}</b></button>`).join("")}</div>`);
   JYBACK=subj;}
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal();});
@@ -2035,7 +2045,7 @@ let LAWSEL={i:LAWIDX["行政程序法"],q:"",jump:null};
 try{const v=JSON.parse(localStorage.getItem("hz-law")||"null");if(v&&LAWS[v.i])LAWSEL.i=v.i;}catch(e){}
 function viewLaws(){
   const L=LAWS[LAWSEL.i];const groups=[...new Set(LAWS.map(l=>l.g))];
-  app.innerHTML=`
+  app.innerHTML=`${backBar("laws")}
   <section class="card stack">
     <div class="row" style="justify-content:space-between"><h2>法條</h2><span class="small muted">共 ${LAWS.length} 部法規，條文資料日期 ${LAWDATE}</span></div>
     <div class="row">
@@ -2068,7 +2078,57 @@ function renderLawList(){
 }
 
 /* ========== 路由 ========== */
-const VIEWS=["home","intro","admin","constitution","civil","huzheng","chinese","english","quiz","past","mock","cards","essay","exam-guide","plan","laws"];
+/* ========== 回上一步 ========== */
+let BACKS=[],RESTOREY=null;
+function viewName(h){const a=document.querySelector(`nav.tabs a[href="${h}"]`);return a?a.textContent:"上一頁";}
+function goView(v,setup){const cur=location.hash||"#home";
+  if(cur!=="#"+v){BACKS.push({h:cur,y:window.scrollY,u:Object.assign({},curUnit)});if(BACKS.length>10)BACKS.shift();}
+  if(setup)setup();
+  if(cur==="#"+v){render();window.scrollTo({top:0});}else location.hash=v;}
+function goBack(){const b=BACKS.pop();if(!b)return;if(b.u)curUnit=b.u;RESTOREY=b.y;location.hash=b.h.replace("#","")||"home";}
+function backBar(here){const b=BACKS[BACKS.length-1];if(!b||b.h==="#"+here)return"";const n=viewName(b.h);
+  return `<button class="btn backfab" data-goback aria-label="回到${esc(n)}">← 回到${esc(n)}</button>`;}
+document.addEventListener("click",e=>{if(e.target.closest("nav.tabs a"))BACKS=[];});
+
+/* ========== 釋字頁 ========== */
+let JYSEL={s:"all",q:""};
+try{const v=JSON.parse(localStorage.getItem("hz-jy")||"null");if(v&&v.s)JYSEL.s=v.s;}catch(e){}
+const JYSUBJ=["intro","admin","constitution","civil","huzheng"].filter(x=>Object.values(JY).some(j=>j.s.includes(x)));
+function viewJYPage(){
+  const all=Object.keys(JY).sort(jyOrder);
+  app.innerHTML=`${backBar("jy")}
+  <section class="card stack">
+    <div class="row" style="justify-content:space-between"><h2>重要釋字與憲法判決</h2><span class="small muted">共 ${all.length} 則・考試用重點摘要</span></div>
+    <div class="row">
+      <label for="jsel">科目</label><select id="jsel"><option value="all">全部（${all.length}）</option>${JYSUBJ.map(x=>`<option value="${x}">${SUBJ[x]}（${jyKeys(x).length}）</option>`).join("")}</select>
+      <label for="jq">搜尋</label><input id="jq" type="search" placeholder="輸入號碼（如 748）或關鍵字（如 隱私、公務員）" style="font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 10px;flex:1;min-width:180px" value="${esc(JYSEL.q)}">
+    </div>
+    <p class="small muted">每則列出爭點、結論與考點；藍色是其他釋字、綠色是條文，點了會跳出原文。完整內容以司法院公布的解釋文、判決為準。</p>
+  </section>
+  <section id="jylistpage" class="stack"></section>`;
+  const sel=document.getElementById("jsel"),q=document.getElementById("jq");sel.value=JYSEL.s;
+  sel.onchange=()=>{JYSEL.s=sel.value;try{localStorage.setItem("hz-jy",JSON.stringify({s:JYSEL.s}));}catch(e){}renderJYList();};
+  let tm=null;q.oninput=()=>{clearTimeout(tm);tm=setTimeout(()=>{JYSEL.q=q.value.trim();renderJYList();},250);};
+  renderJYList();
+}
+function renderJYList(){
+  const box=document.getElementById("jylistpage");if(!box)return;
+  const q=JYSEL.q.toLowerCase();
+  const ks=Object.keys(JY).sort(jyOrder).filter(k=>{const j=JY[k];
+    if(JYSEL.s!=="all"&&!j.s.includes(JYSEL.s))return false;
+    if(!q)return true;
+    return (k+jyLabel(k)+j.t+j.q+j.a+j.k).toLowerCase().includes(q);});
+  if(!ks.length){box.innerHTML=`<div class="card"><p class="muted">找不到符合的釋字，換個關鍵字試試。</p></div>`;return;}
+  box.innerHTML=ks.map(k=>{const j=JY[k];return `<article class="card jycard" id="jy-${k}">
+    <div class="row" style="gap:8px;align-items:baseline"><span class="pill red">${jyLabel(k)}</span><h3 style="margin:0">${j.t}</h3></div>
+    <p class="small muted" style="margin:4px 0 8px">${j.s.map(x=>SUBJ[x]).join("、")}</p>
+    <div class="jyrow"><span class="lab">爭點</span><p>${j.q}</p></div>
+    <div class="jyrow"><span class="lab">結論</span><p>${linkify(j.a)}</p></div>
+    <div class="jyrow memo"><span class="lab">考點</span><p>${linkify(j.k)}</p></div>
+  </article>`;}).join("");
+}
+
+const VIEWS=["home","intro","admin","constitution","civil","huzheng","chinese","english","quiz","past","mock","cards","essay","exam-guide","plan","laws","jy"];
 function render(){
   let v=location.hash.replace("#","");
   if(!VIEWS.includes(v)) v="home";
@@ -2082,13 +2142,15 @@ function render(){
   else if(v==="mock") viewMock();
   else if(v==="plan") viewPlan();
   else if(v==="laws") viewLaws();
+  else if(v==="jy") viewJYPage();
   else viewEssay();
 }
 app.addEventListener("click",e=>{
   const t=e.target.closest("button"); if(!t) return;
   if(t.dataset.jy){openJY(t.dataset.jy);return;}
   if(t.dataset.law){const [n,no]=t.dataset.law.split("|");openLaw(n,no);return;}
-  if(t.dataset.lawname){const i=LAWIDX[t.dataset.lawname];if(i!==undefined){LAWSEL={i,q:"",jump:null};location.hash="laws";}return;}
+  if(t.dataset.lawname){const i=LAWIDX[t.dataset.lawname];if(i!==undefined)goView("laws",()=>{LAWSEL={i,q:"",jump:null};});return;}
+  if(t.dataset.goback!==undefined){goBack();return;}
   if(t.dataset.jylist){openJYList(t.dataset.jylist);return;}
   if(t.dataset.grade!==undefined){copyText(gradePrompt(PE[+t.dataset.grade]),t);return;}
   if(t.dataset.pastsubj){PAST.s=t.dataset.pastsubj;PAST.t="all";PAST.y="all";PAST.x="地特四等";PAST.wrong=false;savePast();location.hash="past";return;}
@@ -2099,7 +2161,7 @@ app.addEventListener("click",e=>{
   if(t.dataset.mark){const id=t.dataset.mark;if(S.read[id])delete S.read[id];else S.read[id]=1;save();render();return;}
   if(t.dataset.quiz){if(!poolFor(t.dataset.quiz).length)return; startQuiz(t.dataset.quiz);window.scrollTo({top:0});return;}
 });
-window.addEventListener("hashchange",()=>{ if(location.hash!=="#quiz") quiz=null; render(); window.scrollTo({top:0}); });
+window.addEventListener("hashchange",()=>{ if(location.hash!=="#quiz") quiz=null; render(); const y=RESTOREY;RESTOREY=null;window.scrollTo({top:y||0}); });
 render();
 </script>
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js")}</script>
